@@ -1,0 +1,5 @@
+scrapy
+undetected-chromedriver
+selenium
+pymongo
+python-dotenv

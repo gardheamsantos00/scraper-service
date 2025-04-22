@@ -1,18 +1,29 @@
+from app.services.database_service import DatabaseService
+from app.scraper.services.playwright_scraper import PlaywrightScraperService
+
 class GoogleScraper:
-    def __init__(self, db_service):
+    def __init__(self, db_service: DatabaseService):
         self.db_service = db_service
+        self.scraper_service = PlaywrightScraperService()
 
-    def run(self, query, location, max_pages=1):
-        print(f"🔍 Buscando por '{query}' em '{location}', páginas: {max_pages}")
-        # (Aqui no próximo passo implementamos de fato a lógica com Selenium/Scrapy)
+    def run(self, query: str, location: str, max_pages: int = 1):
+        print(f"🔎 Buscando por '{query}' em '{location}', páginas: {max_pages}")
 
-        # Exemplo de salvamento:
-        example_lead = {
-            "name": "Exemplo Lead",
-            "social_link": "https://instagram.com/exemplo",
-            "email": "exemplo@gmail.com",
-            "phone": "(41) 99999-9999",
-            "city": "Curitiba",
-            "state": "PR"
-        }
-        self.db_service.save_lead("leads", example_lead)
+        # Prepara o termo de busca
+        search_query = f'{query} {location} site:instagram.com OR site:facebook.com OR site:linkedin.com'
+
+        # Faz o scraping
+        scraped_data = self.scraper_service.run_scrape_google(search_query, max_pages)
+
+        for item in scraped_data:
+            lead = {
+                "name": item.get("title"),
+                "social_link": item.get("url"),
+                "email": None,
+                "phone": None,
+                "city": location.split("-")[0] if "-" in location else location,
+                "state": location.split("-")[1] if "-" in location else None
+            }
+
+            # Salva o lead no banco
+            self.db_service.save_lead("leads", lead)

@@ -1,5 +1,5 @@
 from app.services.database_service import DatabaseService
-from app.scraper.services.playwright_scraper import PlaywrightScraperService
+from app.scraper.playwright_scraper import PlaywrightScraperService
 
 class GoogleScraper:
     def __init__(self, db_service: DatabaseService):

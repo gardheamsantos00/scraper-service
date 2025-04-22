@@ -3,3 +3,5 @@ undetected-chromedriver
 selenium
 pymongo
 python-dotenv
+fastapi
+uvicorn

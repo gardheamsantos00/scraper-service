@@ -1,20 +1,21 @@
-from app.scraper.google_scraper import GoogleScraper
 from app.services.database_service import DatabaseService
-from app.config import settings
+from app.scraper.google_scraper import GoogleScraper
+from app.config.settings import MONGO_URI, MONGO_DB_NAME
 
 def main():
-    print("🚀 Inicializando Scraper Service...")
+    # Inicializa serviço de banco
+    db_service = DatabaseService(MONGO_URI, MONGO_DB_NAME)
 
-    # Inicializa banco de dados
-    db_service = DatabaseService(settings.MONGO_URI, settings.MONGO_DB_NAME)
-
-    # Inicializa o Scraper
+    # Inicializa serviço de scraping
     google_scraper = GoogleScraper(db_service)
 
-    # Executa uma busca de teste
+    # Parâmetros de exemplo
     query = "Arquiteto"
-    location = "Curitiba"
-    google_scraper.run(query=query, location=location, max_pages=5)
+    location = "Curitiba-PR"
+    max_pages = 1
+
+    # Executa o scraping
+    google_scraper.run(query=query, location=location, max_pages=max_pages)
 
 if __name__ == "__main__":
     main()

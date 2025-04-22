@@ -5,3 +5,4 @@ fastapi
 uvicorn
 httpx  # opcional, para chamadas http assíncronas no futuro
 loguru  # para logs mais organizados
+cachetools

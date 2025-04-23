@@ -19,7 +19,6 @@ class PlaywrightScraperService:
         self.playwright = None
 
     async def _init_browser(self):
-        """Inicializa o Playwright, browser e context, se ainda não estiverem prontos"""
         if not self.playwright:
             self.playwright = await async_playwright().start()
         if not self.browser:
@@ -30,7 +29,6 @@ class PlaywrightScraperService:
             self.page = await self.context.new_page()
 
     async def close_browser(self):
-        """Fecha browser, context e Playwright de forma segura"""
         if self.page:
             await self.page.close()
         if self.context:
@@ -41,7 +39,6 @@ class PlaywrightScraperService:
             await self.playwright.stop()
 
     async def is_captcha_page(self):
-        """Verifica se a página atual tem indicativos de CAPTCHA"""
         try:
             content = await self.page.content()
             if "recaptcha" in content.lower() or "unusual traffic" in content.lower():
@@ -53,11 +50,10 @@ class PlaywrightScraperService:
             return False
 
     async def _extract_result_data(self, box):
-        """Extrai título, link e descrição de um resultado do Google"""
         try:
             title_element = await box.query_selector("h3")
             link_element = await box.query_selector("a")
-            description_element = await box.query_selector("div.VwiC3b")
+            description_element = await box.query_selector("div.VwiC3b")  # Descrição em destaque
 
             title = await title_element.inner_text() if title_element else None
             link = await link_element.get_attribute("href") if link_element else None
@@ -65,9 +61,9 @@ class PlaywrightScraperService:
 
             if title and link:
                 return {
-                    "title": title,
-                    "url": link,
-                    "description": description
+                    "title": title.strip(),
+                    "url": link.strip(),
+                    "description": description.strip() if description else None
                 }
         except Exception as e:
             logger.error(f"Erro ao extrair dados de resultado: {e}")
@@ -81,12 +77,13 @@ class PlaywrightScraperService:
 
         try:
             while page_num < max_pages:
-                url = f"https://www.google.com/search?q={search_query}&start={page_num * 10}"
+                url = f"https://www.google.com/search?q={search_query}&start={page_num}"
                 logger.info(f"🔎 Buscando página {page_num + 1}: {url}")
 
                 try:
                     await self.page.goto(url)
-                    await self.page.wait_for_selector("div.MjjYud", timeout=5000)
+                   #varTemp = await self.page.wait_for_selector("div#dURPMd", timeout=15000)  # Aguarda a área principal
+                   #logger.warning("⚠️ varTemp LOG: ", varTemp)
                 except PlaywrightTimeoutError:
                     logger.warning("⚠️ Timeout esperando resultados. Pulando página.")
                     break
@@ -95,23 +92,29 @@ class PlaywrightScraperService:
                     logger.error("❌ CAPTCHA detectado! Encerrando scraping.")
                     break
 
-                result_boxes = await self.page.query_selector_all("div.MjjYud")
+                # Agora varre dentro da área mais segura (center_col)
+                center_col = await self.page.query_selector("div#dURPMd")
+                if not center_col:
+                    logger.warning("⚠️ Não encontrou a área de resultados (center_col).")
+                    break
+
+                result_boxes = await center_col.query_selector_all("div.dURPMd")  # Dentro da área center_col
                 for box in result_boxes:
                     data = await self._extract_result_data(box)
                     if data:
                         results.append(data)
 
-                # Tenta clicar para próxima página
+                # Tenta clicar no botão "próxima página"
                 try:
                     next_button = await self.page.query_selector('a#pnnext')
                     if next_button:
                         await next_button.click()
-                        await asyncio.sleep(random.uniform(2, 5))  # Simula navegação humana
+                        await asyncio.sleep(random.uniform(2, 5))  # Delay humano
                     else:
                         logger.info("🚫 Sem mais páginas disponíveis.")
                         break
                 except PlaywrightTimeoutError:
-                    logger.warning("⚠️ Timeout tentando clicar em próxima página.")
+                    logger.warning("⚠️ Timeout tentando clicar no botão próxima página.")
                     break
 
                 page_num += 1
@@ -122,5 +125,4 @@ class PlaywrightScraperService:
         return results
 
     def run_scrape_google(self, search_query: str, max_pages: int = 1):
-        """Método síncrono para testes rápidos"""
         return asyncio.run(self.scrape_google(search_query, max_pages))
